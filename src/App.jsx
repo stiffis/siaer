@@ -50,6 +50,11 @@ function App() {
   const [isLoadingSolarNeo, setIsLoadingSolarNeo] = useState(false);
   const [solarNeoInfo, setSolarNeoInfo] = useState(null);
   const [solarNeoError, setSolarNeoError] = useState(null);
+  const [impactorObject, setImpactorObject] = useState(null);
+  const [isLoadingImpactor, setIsLoadingImpactor] = useState(false);
+  const [impactorError, setImpactorError] = useState(null);
+  const [collisions, setCollisions] = useState([]);
+  const [showCollisionNotifications, setShowCollisionNotifications] = useState(true);
 
   // Estados de animación
   const [isPlaying, setIsPlaying] = useState(false);
@@ -308,6 +313,151 @@ const checkBackendConnection = async () => {
     setSolarNeoError(null);
     setIsLoadingSolarNeo(false);
   }, []);
+
+  const handleLoadImpactor2025 = useCallback(async () => {
+    if (connectionStatus !== 'connected') {
+      setImpactorError('Backend no disponible para cargar IMPACTOR-2025');
+      return;
+    }
+
+    setIsLoadingImpactor(true);
+    setImpactorError(null);
+
+    try {
+      const result = await MeteorMadnessAPI.getImpactor2025();
+
+      if (!result.success) {
+        const message = result.error?.error || result.error || 'No se pudo obtener datos de IMPACTOR-2025';
+        setImpactorError(message);
+        return;
+      }
+
+      const data = result.data || {};
+      const elements = data.simulation_elements;
+
+      if (!elements) {
+        setImpactorError('IMPACTOR-2025 no cuenta con elementos orbitales disponibles');
+        return;
+      }
+
+      const referenceDate = solarSystemData?.generatedAt ? new Date(solarSystemData.generatedAt) : new Date();
+      const epochJD = data.orbit?.epoch?.jd;
+      let epochDate = referenceDate;
+      if (typeof epochJD === 'number' && Number.isFinite(epochJD)) {
+        const epochMs = (epochJD - 2440587.5) * 86400000;
+        if (Number.isFinite(epochMs)) {
+          epochDate = new Date(epochMs);
+        }
+      }
+
+      const deltaSeconds = (referenceDate.getTime() - epochDate.getTime()) / 1000;
+      const mu = Number(elements.mu) || 1.32712440018e11;
+      const aKm = Number(elements.a);
+      const eccentricity = Number(elements.e);
+      const inclinationDeg = Number(elements.i);
+      const ascendingNodeDeg = Number(elements.Omega);
+      const periapsisDeg = Number(elements.omega);
+      const meanAnomalyDeg = Number(elements.M0);
+
+      if (!Number.isFinite(aKm) || !Number.isFinite(eccentricity)) {
+        setImpactorError('Datos orbitales incompletos para IMPACTOR-2025');
+        return;
+      }
+
+      const meanMotion = Math.sqrt(mu / Math.pow(aKm, 3));
+      const meanAnomalyNowRad = (meanAnomalyDeg * Math.PI) / 180 + meanMotion * deltaSeconds;
+      const meanAnomalyNowDeg = ((meanAnomalyNowRad * 180) / Math.PI) % 360;
+      const wrappedMeanAnomalyDeg = (meanAnomalyNowDeg + 360) % 360;
+      const orbitalPeriodDays = (2 * Math.PI) / meanMotion / 86400;
+
+      const impactorColor = '#ff4444';
+      setImpactorObject({
+        name: data.name || 'IMPACTOR-2025',
+        color: impactorColor,
+        orbitColor: impactorColor,
+        radiusKm: data.radiusKm || 0.5,
+        semiMajorAxisKm: aKm,
+        eccentricity,
+        inclinationDeg,
+        longitudeOfAscendingNodeDeg: ascendingNodeDeg,
+        argumentOfPeriapsisDeg: periapsisDeg,
+        meanAnomalyDeg: wrappedMeanAnomalyDeg,
+        orbitalPeriodDays,
+        isNeo: true,
+        isImpactor: true,
+      });
+      setImpactorError(null);
+    } catch (err) {
+      console.error('Error al obtener datos de IMPACTOR-2025:', err);
+      setImpactorError('Error de comunicación al obtener datos de IMPACTOR-2025');
+    } finally {
+      setIsLoadingImpactor(false);
+    }
+  }, [connectionStatus, solarSystemData]);
+
+  const handleClearImpactor = useCallback(() => {
+    setImpactorObject(null);
+    setImpactorError(null);
+    setIsLoadingImpactor(false);
+  }, []);
+
+  const handleCollision = useCallback((collisionData) => {
+    const collision = {
+      id: Date.now(),
+      timestamp: new Date().toLocaleTimeString(),
+      object1: collisionData.object1.name,
+      object2: collisionData.object2.name,
+      distance: collisionData.distance,
+      threshold: collisionData.threshold,
+      time: collisionData.time,
+      entryAngle: collisionData.entryAngle,
+      relativeVelocity: collisionData.relativeVelocity,
+      impactType: collisionData.impactType,
+      collisionType: collisionData.collisionType
+    };
+    
+    setCollisions(prev => [collision, ...prev.slice(0, 9)]); // Mantener solo las últimas 10 colisiones
+    
+    // Mostrar notificación temporal
+    if (showCollisionNotifications) {
+      // Crear notificación visual temporal
+      const notification = document.createElement('div');
+      notification.className = 'fixed top-20 right-6 z-50 bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg border border-red-500 max-w-sm';
+      
+      // Determinar el emoji según el tipo de colisión
+      let emoji = '💥';
+      let title = '¡COLISIÓN DETECTADA!';
+      
+      if (collisionData.collisionType === 'ATMOSPHERIC_ENTRY') {
+        emoji = '🌍';
+        title = '¡ENTRADA ATMOSFÉRICA!';
+      } else if (collisionData.collisionType === 'SURFACE_IMPACT') {
+        emoji = '💥';
+        title = '¡IMPACTO SUPERFICIAL!';
+      }
+      
+      notification.innerHTML = `
+        <div class="flex items-center space-x-2">
+          <span class="text-xl">${emoji}</span>
+          <div>
+            <div class="font-semibold">${title}</div>
+            <div class="text-sm">${collision.object1} ↔ ${collision.object2}</div>
+            <div class="text-xs opacity-75">${collision.timestamp}</div>
+            <div class="text-xs opacity-75">Ángulo: ${collisionData.entryAngle?.toFixed(1)}°</div>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(notification);
+      
+      // Remover después de 7 segundos (más tiempo para leer la información)
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.parentNode.removeChild(notification);
+        }
+      }, 7000);
+    }
+  }, [showCollisionNotifications]);
 
   const handleNeoSearch = useCallback(async (query) => {
     const trimmed = (query || '').trim();
@@ -848,9 +998,10 @@ const checkBackendConnection = async () => {
               <SolarSystemVisualization
                 className="h-full w-full"
                 planets={solarPlanets}
-                neoObjects={solarNeoObject ? [solarNeoObject] : []}
+                neoObjects={[...(solarNeoObject ? [solarNeoObject] : []), ...(impactorObject ? [impactorObject] : [])]}
                 generatedAt={solarGeneratedAt}
                 timeScale={solarTimeScale}
+                onCollision={handleCollision}
               />
             ) : (
               <div className="h-full w-full flex flex-col items-center justify-center text-gray-300">
@@ -969,6 +1120,124 @@ const checkBackendConnection = async () => {
                 )}
                 <div className="text-[11px] text-gray-300">
                   Seleccionar un NEO añadirá su órbita a la vista del sistema solar.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {viewMode === 'solar' && (
+            <div className="pointer-events-none absolute top-96 right-6 z-30 flex flex-col w-80 max-w-full">
+              <div className="pointer-events-auto bg-transparent border border-transparent rounded-2xl p-4 space-y-3 text-gray-100">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-100 mb-2">IMPACTOR-2025</h3>
+                  <div className="text-xs text-gray-300 mb-3">
+                    Meteorito hipotético con trayectoria de impacto potencial
+                  </div>
+                  {impactorError && (
+                    <div className="text-xs text-red-400 mb-3">
+                      {typeof impactorError === 'string' ? impactorError : impactorError.error}
+                    </div>
+                  )}
+                  {isLoadingImpactor && (
+                    <div className="text-xs text-red-300 mb-3">Cargando IMPACTOR-2025...</div>
+                  )}
+                  {impactorObject && (
+                    <div className="text-xs text-gray-200 bg-transparent border border-transparent rounded-lg p-3 space-y-1 mb-3">
+                      <div className="text-sm text-gray-100 font-semibold">IMPACTOR-2025 en vista:</div>
+                      <div className="text-red-300 font-semibold">⚠️ Objeto con trayectoria de impacto potencial</div>
+                      <div>Período orbital: {impactorObject.orbitalPeriodDays.toFixed(1)} días</div>
+                      <div>Semi-eje mayor: {(impactorObject.semiMajorAxisKm / 149597870.7).toFixed(3)} AU</div>
+                      <div>Excentricidad: {impactorObject.eccentricity.toFixed(3)}</div>
+                      <div>Inclinación: {impactorObject.inclinationDeg.toFixed(1)}°</div>
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          onClick={handleClearImpactor}
+                          className="px-3 py-1 text-[11px] rounded-md border border-red-500 text-red-200 hover:bg-red-900/50"
+                        >
+                          Quitar IMPACTOR-2025
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleLoadImpactor2025}
+                    disabled={isLoadingImpactor || connectionStatus !== 'connected'}
+                    className={`w-full px-4 py-2 rounded-lg border transition-colors text-sm font-medium ${
+                      isLoadingImpactor || connectionStatus !== 'connected'
+                        ? 'bg-gray-700/40 border-gray-500/60 text-gray-400 cursor-not-allowed'
+                        : 'bg-red-600/80 border-red-500 text-white hover:bg-red-700/90'
+                    }`}
+                  >
+                    {isLoadingImpactor ? 'Cargando...' : '🚀 Cargar IMPACTOR-2025'}
+                  </button>
+                </div>
+                <div className="text-[11px] text-gray-300">
+                  IMPACTOR-2025 es un meteorito hipotético con parámetros orbitales específicos para simulación educativa.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {viewMode === 'solar' && (
+            <div className="pointer-events-none absolute top-24 left-6 z-30 flex flex-col w-80 max-w-full">
+              <div className="pointer-events-auto bg-transparent border border-transparent rounded-2xl p-4 space-y-3 text-gray-100">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-semibold text-gray-100">Detección de Colisiones</h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowCollisionNotifications(!showCollisionNotifications)}
+                      className={`px-2 py-1 text-xs rounded border transition-colors ${
+                        showCollisionNotifications
+                          ? 'bg-green-600 border-green-500 text-white'
+                          : 'bg-gray-600 border-gray-500 text-gray-300'
+                      }`}
+                    >
+                      {showCollisionNotifications ? '🔔 ON' : '🔕 OFF'}
+                    </button>
+                  </div>
+                  
+                  {collisions.length > 0 ? (
+                    <div className="max-h-40 overflow-y-auto space-y-2">
+                      {collisions.map((collision) => (
+                        <div key={collision.id} className="bg-red-900/30 border border-red-500/50 rounded p-2 text-xs">
+                          <div className="flex items-center space-x-1 mb-1">
+                            <span className="text-red-400">
+                              {collision.collisionType === 'ATMOSPHERIC_ENTRY' ? '🌍' : 
+                               collision.collisionType === 'SURFACE_IMPACT' ? '💥' : '⚠️'}
+                            </span>
+                            <span className="font-semibold text-red-300">
+                              {collision.collisionType === 'ATMOSPHERIC_ENTRY' ? 'ENTRADA ATMOSFÉRICA' :
+                               collision.collisionType === 'SURFACE_IMPACT' ? 'IMPACTO SUPERFICIAL' : 'COLISIÓN'}
+                            </span>
+                          </div>
+                          <div className="text-gray-200 space-y-1">
+                            <div className="font-medium">{collision.object1} ↔ {collision.object2}</div>
+                            <div className="text-gray-400 text-[10px]">{collision.timestamp}</div>
+                            <div className="grid grid-cols-2 gap-1 text-[10px]">
+                              <div>Distancia: {(collision.distance / 1000).toFixed(1)} km</div>
+                              <div>Umbral: {(collision.threshold / 1000).toFixed(1)} km</div>
+                              <div>Ángulo: {collision.entryAngle?.toFixed(1)}°</div>
+                              <div>Velocidad: {(collision.relativeVelocity / 1000).toFixed(1)} km/s</div>
+                            </div>
+                            <div className="text-[10px] text-yellow-300">
+                              Tipo: {collision.impactType?.replace('_', ' ')}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-400 text-center py-4">
+                      No se han detectado colisiones
+                    </div>
+                  )}
+                  
+                  <div className="text-[11px] text-gray-300 mt-2">
+                    El sistema detecta automáticamente cuando dos objetos están muy cerca.
+                  </div>
                 </div>
               </div>
             </div>
