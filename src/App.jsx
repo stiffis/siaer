@@ -4,10 +4,10 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import OrbitalVisualization from './components/OrbitalVisualization';
 import ControlPanel from './components/ControlPanel';
-import AnimationControls from './components/AnimationControls';
 import SolarSystemVisualization from './components/SolarSystemVisualization';
+import ImpactorPage from './pages/ImpactorPage';
+import ImpactorSimPage from './pages/ImpactorSimPage';
 import MeteorMadnessAPI from './services/api';
 
 function App() {
@@ -55,15 +55,14 @@ function App() {
   const [impactorError, setImpactorError] = useState(null);
   const [collisions, setCollisions] = useState([]);
   const [showCollisionNotifications, setShowCollisionNotifications] = useState(true);
+  const [neoTimeScale, setNeoTimeScale] = useState(1);
+  const [currentNeoOrbit, setCurrentNeoOrbit] = useState(null);
+  const [currentNeoName, setCurrentNeoName] = useState('NEO');
+  const [showImpactorPage, setShowImpactorPage] = useState(false);
+  const [showImpactorSimPage, setShowImpactorSimPage] = useState(false);
 
   // Estados de animación
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentFrame, setCurrentFrame] = useState(0);
-  const [animationSpeed, setAnimationSpeed] = useState(1.0);
-
   // Referencias
-  const animationRef = useRef(null);
-  const lastFrameTimeRef = useRef(0);
   const introDismissedRef = useRef(false);
   const introFadeTimeoutRef = useRef(null);
   const introSessionRef = useRef({ id: 0, autoDismiss: false, active: true, completed: false });
@@ -88,41 +87,6 @@ function App() {
     return () => clearTimeout(timeoutId);
   }, [elements, simParams, connectionStatus, viewMode]);
 
-  // Manejo de la animación
-  useEffect(() => {
-    if (isPlaying && simulationData?.trajectory?.positions) {
-      const animate = (currentTime) => {
-        if (currentTime - lastFrameTimeRef.current >= (100 / animationSpeed)) {
-          setCurrentFrame(prev => {
-            const maxFrames = simulationData.trajectory.positions.length - 1;
-            const next = prev + 1;
-            
-            if (next > maxFrames) {
-              setIsPlaying(false);
-              return maxFrames;
-            }
-            
-            return next;
-          });
-          
-          lastFrameTimeRef.current = currentTime;
-        }
-        
-        if (isPlaying) {
-          animationRef.current = requestAnimationFrame(animate);
-        }
-      };
-      
-      animationRef.current = requestAnimationFrame(animate);
-    }
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, [isPlaying, animationSpeed, simulationData]);
-
   useEffect(() => {
     return () => {
       if (introFadeTimeoutRef.current) {
@@ -133,7 +97,6 @@ function App() {
 
   useEffect(() => {
     if (viewMode === 'solar') {
-      setIsPlaying(false);
       setNeoSearchResults([]);
       setNeoSearchError(null);
       setIsSearchingNeo(false);
@@ -208,6 +171,26 @@ function App() {
     setIntroLoadDurationMs(Date.now() - introStartTimeRef.current);
   }, []);
 
+  const handleGoBackFromImpactor = useCallback(() => {
+    startIntro(true);
+    const sessionId = introSessionRef.current.id;
+    setShowImpactorPage(false);
+
+    setTimeout(() => {
+      markIntroLoaded(sessionId);
+    }, 600);
+  }, [markIntroLoaded, startIntro]);
+
+  const handleImpactorSimBack = useCallback(() => {
+    startIntro(true);
+    const sessionId = introSessionRef.current.id;
+    setShowImpactorSimPage(false);
+
+    setTimeout(() => {
+      markIntroLoaded(sessionId);
+    }, 600);
+  }, [markIntroLoaded, startIntro]);
+
 // Funciones de API
 const checkBackendConnection = async () => {
     try {
@@ -226,6 +209,40 @@ const checkBackendConnection = async () => {
     }
   };
 
+  const simulationElementsToOrbitData = useCallback((elements, name = 'NEO') => {
+    if (!elements) {
+      return null;
+    }
+
+    const semiMajorAxisKm = Number(elements.a);
+    const eccentricity = Number(elements.e);
+    const inclinationDeg = Number(elements.i);
+    const longitudeOfAscendingNodeDeg = Number(elements.Omega);
+    const argumentOfPeriapsisDeg = Number(elements.omega);
+    const meanAnomalyDeg = Number(elements.M0);
+    const mu = Number(elements.mu);
+
+    const resolvedMu = Number.isFinite(mu) ? mu : 3.986004418e5;
+
+    if (!Number.isFinite(semiMajorAxisKm)) {
+      return null;
+    }
+
+    const orbitalPeriodSeconds = 2 * Math.PI * Math.sqrt(Math.pow(semiMajorAxisKm, 3) / resolvedMu);
+
+    return {
+      name,
+      semiMajorAxisKm,
+      eccentricity: Number.isFinite(eccentricity) ? eccentricity : 0,
+      inclinationDeg: Number.isFinite(inclinationDeg) ? inclinationDeg : 0,
+      longitudeOfAscendingNodeDeg: Number.isFinite(longitudeOfAscendingNodeDeg) ? longitudeOfAscendingNodeDeg : 0,
+      argumentOfPeriapsisDeg: Number.isFinite(argumentOfPeriapsisDeg) ? argumentOfPeriapsisDeg : 0,
+      meanAnomalyDeg: Number.isFinite(meanAnomalyDeg) ? meanAnomalyDeg : 0,
+      orbitalPeriodDays: orbitalPeriodSeconds / 86400,
+      mu: resolvedMu,
+    };
+  }, []);
+
   const loadPresets = async () => {
     try {
       const result = await MeteorMadnessAPI.getPresets();
@@ -236,6 +253,19 @@ const checkBackendConnection = async () => {
       console.warn('No se pudieron cargar los presets:', err);
     }
   };
+
+  // Inicializar currentNeoOrbit cuando los elementos cambien
+  useEffect(() => {
+    if (viewMode === 'orbit') {
+      const orbit = simulationElementsToOrbitData(elements, currentNeoName);
+      if (orbit) {
+        setCurrentNeoOrbit(prevOrbit => {
+          const currentColor = prevOrbit?.color || prevOrbit?.orbitColor || '#2B7BFF';
+          return { ...orbit, color: currentColor, orbitColor: currentColor };
+        });
+      }
+    }
+  }, [elements, simulationElementsToOrbitData, currentNeoName, viewMode]);
 
   const loadSolarSystemData = useCallback(async (sessionId = introSessionRef.current.id) => {
     if (connectionStatus !== 'connected') {
@@ -263,7 +293,18 @@ const checkBackendConnection = async () => {
   }, [connectionStatus, markIntroLoaded]);
 
   useEffect(() => {
-    if (viewMode === 'solar' && connectionStatus === 'connected' && !solarSystemData && !isLoadingSolar) {
+    if (connectionStatus !== 'connected') {
+      return;
+    }
+
+    if (!solarSystemData && !isLoadingSolar) {
+      loadSolarSystemData();
+    }
+  }, [connectionStatus, solarSystemData, isLoadingSolar, loadSolarSystemData]);
+
+  useEffect(() => {
+    // Cargar datos del sistema solar tanto para vista solar como para simulación NEO (necesitamos datos de la Tierra)
+    if (connectionStatus === 'connected' && !solarSystemData && !isLoadingSolar) {
       loadSolarSystemData(introSessionRef.current.id);
     }
   }, [viewMode, connectionStatus, solarSystemData, isLoadingSolar, loadSolarSystemData]);
@@ -291,6 +332,17 @@ const checkBackendConnection = async () => {
 
     return true;
   }, [connectionStatus, markIntroLoaded, solarSystemData, startIntro, viewMode]);
+
+  const handleAdvancePhase = useCallback(() => {
+    startIntro(true);
+    const sessionId = introSessionRef.current.id;
+    setShowImpactorPage(false);
+    setShowImpactorSimPage(true);
+
+    setTimeout(() => {
+      markIntroLoaded(sessionId);
+    }, 600);
+  }, [markIntroLoaded, startIntro]);
 
   const handleSolarSpeedChange = useCallback((event) => {
     setSolarTimeScale(Number(event.target.value));
@@ -371,8 +423,9 @@ const checkBackendConnection = async () => {
       const orbitalPeriodDays = (2 * Math.PI) / meanMotion / 86400;
 
       const impactorColor = '#ff4444';
+      const impactorName = data.name || 'IMPACTOR-2025';
       setImpactorObject({
-        name: data.name || 'IMPACTOR-2025',
+        name: impactorName,
         color: impactorColor,
         orbitColor: impactorColor,
         radiusKm: data.radiusKm || 0.5,
@@ -384,6 +437,21 @@ const checkBackendConnection = async () => {
         meanAnomalyDeg: wrappedMeanAnomalyDeg,
         orbitalPeriodDays,
         isNeo: true,
+        isImpactor: true,
+      });
+      setCurrentNeoName(impactorName);
+      setCurrentNeoOrbit({
+        name: impactorName,
+        semiMajorAxisKm: aKm,
+        eccentricity,
+        inclinationDeg,
+        longitudeOfAscendingNodeDeg: ascendingNodeDeg,
+        argumentOfPeriapsisDeg: periapsisDeg,
+        meanAnomalyDeg: wrappedMeanAnomalyDeg,
+        orbitalPeriodDays,
+        mu,
+        color: impactorColor,
+        orbitColor: impactorColor,
         isImpactor: true,
       });
       setImpactorError(null);
@@ -399,7 +467,68 @@ const checkBackendConnection = async () => {
     setImpactorObject(null);
     setImpactorError(null);
     setIsLoadingImpactor(false);
+    setCurrentNeoOrbit(null);
+    setCurrentNeoName('NEO');
   }, []);
+
+  const handleLoadImpactorForNeoSimulation = useCallback(async () => {
+    if (connectionStatus !== 'connected') {
+      setError('Backend no disponible para cargar IMPACTOR-2025');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const result = await MeteorMadnessAPI.getImpactor2025();
+
+      if (!result.success) {
+        const message = result.error?.error || result.error || 'No se pudo obtener datos de IMPACTOR-2025';
+        setError(message);
+        return;
+      }
+
+      const data = result.data || {};
+      const impactorElements = data.simulation_elements;
+
+      if (!impactorElements) {
+        setError('IMPACTOR-2025 no cuenta con elementos orbitales disponibles');
+        return;
+      }
+
+      // Configurar elementos orbitales para la simulación NEO
+      const neoElements = {
+        a: Number(impactorElements.a),
+        e: Number(impactorElements.e), 
+        i: Number(impactorElements.i),
+        omega: Number(impactorElements.omega),
+        Omega: Number(impactorElements.Omega),
+        M0: Number(impactorElements.M0)
+      };
+
+      setElements(neoElements);
+      setCurrentNeoName('IMPACTOR-2025');
+      
+      // Crear órbita para visualización
+      const orbit = simulationElementsToOrbitData(neoElements, 'IMPACTOR-2025');
+      if (orbit) {
+        setCurrentNeoOrbit({ 
+          ...orbit, 
+          color: '#ff4444', 
+          orbitColor: '#ff4444',
+          isImpactor: true 
+        });
+      }
+
+      setError(null);
+    } catch (err) {
+      console.error('Error al obtener datos de IMPACTOR-2025:', err);
+      setError('Error de comunicación al obtener datos de IMPACTOR-2025');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [connectionStatus, simulationElementsToOrbitData]);
 
   const handleCollision = useCallback((collisionData) => {
     const collision = {
@@ -611,8 +740,13 @@ const checkBackendConnection = async () => {
 
       if (result.success) {
         setSimulationData(result.data.data);
-        setCurrentFrame(0);
-        setIsPlaying(false);
+
+        const name = currentNeoName || 'NEO';
+        const orbit = simulationElementsToOrbitData(elements, name);
+        if (orbit) {
+          const previousColor = currentNeoOrbit?.color || currentNeoOrbit?.orbitColor || '#2B7BFF';
+          setCurrentNeoOrbit({ ...orbit, color: previousColor, orbitColor: previousColor });
+        }
       } else {
         setError(result.error?.error || 'Error en la simulación');
         setSimulationData(null);
@@ -630,6 +764,7 @@ const checkBackendConnection = async () => {
   // Manejadores de eventos
   const handleElementsChange = useCallback((newElements) => {
     setElements(newElements);
+    setCurrentNeoName('Simulación personalizada');
   }, []);
   
   const handleSimParamsChange = useCallback((newParams) => {
@@ -638,7 +773,18 @@ const checkBackendConnection = async () => {
 
   const handlePresetSelect = useCallback((presetKey, presetElements) => {
     setElements(presetElements);
-  }, []);
+
+    const preset = presets[presetKey];
+    const presetName = preset?.name || presetKey || 'Preset';
+    setCurrentNeoName(presetName);
+
+    const referenceElements = preset?.elements || presetElements;
+    const orbit = simulationElementsToOrbitData(referenceElements, presetName);
+    if (orbit) {
+      const presetColor = preset?.color || preset?.orbitColor || '#2B7BFF';
+      setCurrentNeoOrbit({ ...orbit, color: presetColor, orbitColor: presetColor });
+    }
+  }, [presets, simulationElementsToOrbitData]);
 
   const handleNeoSelect = useCallback(async (item) => {
     if (!item?.designation) return;
@@ -703,8 +849,9 @@ const checkBackendConnection = async () => {
         const orbitalPeriodDays = (2 * Math.PI) / meanMotion / 86400;
 
         const neoColor = '#7cf9ff';
+        const neoName = data.object?.full_name || item.full_name || item.designation;
         setSolarNeoObject({
-          name: data.object?.full_name || item.full_name || item.designation,
+          name: neoName,
           color: neoColor,
           orbitColor: neoColor,
           radiusKm: 1,
@@ -727,6 +874,21 @@ const checkBackendConnection = async () => {
         setSolarNeoError(null);
         setSolarSearchQuery('');
         setNeoSearchResults([]);
+
+        setCurrentNeoName(neoName || 'NEO');
+        setCurrentNeoOrbit({
+          name: neoName || 'NEO',
+          semiMajorAxisKm: aKm,
+          eccentricity,
+          inclinationDeg,
+          longitudeOfAscendingNodeDeg: ascendingNodeDeg,
+          argumentOfPeriapsisDeg: periapsisDeg,
+          meanAnomalyDeg: wrappedMeanAnomalyDeg,
+          orbitalPeriodDays,
+          mu,
+          color: neoColor,
+          orbitColor: neoColor,
+        });
       } catch (err) {
         console.error('Error al obtener datos del NEO:', err);
         setSolarNeoError('Error de comunicación al obtener datos del NEO');
@@ -766,6 +928,14 @@ const checkBackendConnection = async () => {
         return;
       }
 
+      const neoName = data.object?.full_name || item.full_name || item.designation;
+      setCurrentNeoName(neoName || 'NEO');
+      const orbitFromElements = simulationElementsToOrbitData(simulationElements, neoName || 'NEO');
+      const neoColor = '#7cf9ff';
+      if (orbitFromElements) {
+        setCurrentNeoOrbit({ ...orbitFromElements, color: neoColor, orbitColor: neoColor });
+      }
+
       setNeoSearchResults([]);
       setElements(simulationElements);
       triggeredSimulation = true;
@@ -779,35 +949,11 @@ const checkBackendConnection = async () => {
         setIsLoading(false);
       }
     }
-  }, [connectionStatus, handleViewModeChange, viewMode, solarSystemData]);
+  }, [connectionStatus, handleViewModeChange, viewMode, solarSystemData, simulationElementsToOrbitData]);
 
   const handleRetrySolar = useCallback(() => {
     loadSolarSystemData();
   }, [loadSolarSystemData]);
-
-  const handlePlay = useCallback(() => {
-    if (simulationData?.trajectory?.positions) {
-      setIsPlaying(true);
-    }
-  }, [simulationData]);
-
-  const handlePause = useCallback(() => {
-    setIsPlaying(false);
-  }, []);
-
-  const handleReset = useCallback(() => {
-    setIsPlaying(false);
-    setCurrentFrame(0);
-  }, []);
-
-  const handleFrameSeek = useCallback((frame) => {
-    setCurrentFrame(frame);
-    setIsPlaying(false);
-  }, []);
-
-  const handleSpeedChange = useCallback((speed) => {
-    setAnimationSpeed(speed);
-  }, []);
 
   const togglePanel = useCallback(() => {
     setIsPanelOpen(prev => !prev);
@@ -861,12 +1007,14 @@ const checkBackendConnection = async () => {
     );
   }
 
-  const totalFrames = simulationData?.trajectory?.positions?.length || 0;
   const solarPlanets = solarSystemData?.planets || [];
   const solarGeneratedAt = solarSystemData?.generatedAt || null;
   const isSolarReady = solarPlanets.length > 0;
-  const solarSpeedPresets = [1, 60, 3600, 86400, 604800, 2592000];
+  const speedPresets = [1, 60, 3600, 86400, 604800, 2592000];
+  const solarSpeedPresets = speedPresets;
+  const neoSpeedPresets = speedPresets;
   const solarTimeScaleLabel = formatSolarScale(solarTimeScale);
+  const neoTimeScaleLabel = formatSolarScale(neoTimeScale);
   const solarGeneratedLabel = solarGeneratedAt ? new Date(solarGeneratedAt).toLocaleString() : null;
   const introLoadDurationLabel = introLoadDurationMs != null
     ? introLoadDurationMs >= 1000
@@ -889,6 +1037,24 @@ const checkBackendConnection = async () => {
       };
 
   // Render principal
+  
+  // Si se debe mostrar la página de impactos, renderizarla en lugar del contenido principal
+  if (showImpactorSimPage) {
+    return (
+      <ImpactorSimPage
+        onGoBack={handleImpactorSimBack}
+        solarSystemData={solarSystemData}
+        solarSystemError={solarError}
+        isLoadingSolar={isLoadingSolar}
+        retrySolar={handleRetrySolar}
+      />
+    );
+  }
+
+  if (showImpactorPage) {
+    return <ImpactorPage onGoBack={handleGoBackFromImpactor} onAdvancePhase={handleAdvancePhase} />;
+  }
+
   return (
     <div className="h-screen bg-gray-900 flex flex-col overflow-hidden">
       {isIntroVisible && (
@@ -910,7 +1076,18 @@ const checkBackendConnection = async () => {
               </p>
             </div>
             {isIntroReady && (
-              <p className="text-xs text-gray-400 uppercase tracking-[0.2em]">Desplázate hacia arriba o abajo para comenzar</p>
+              <div className="space-y-4">
+                <p className="text-xs text-gray-400 uppercase tracking-[0.2em]">Desplázate hacia arriba o abajo para comenzar</p>
+                <div className="flex flex-col space-y-2">
+                  <button
+                    onClick={() => setShowImpactorPage(true)}
+                    className="px-6 py-2 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white rounded-lg transition-all duration-200 text-sm font-medium"
+                  >
+                    🚀 IMPACTOR-2025
+                  </button>
+                  <p className="text-xs text-gray-500 text-center">Analiza efectos de impactos de asteroides</p>
+                </div>
+              </div>
             )}
           </div>
           {introLoadDurationLabel && (
@@ -1027,14 +1204,7 @@ const checkBackendConnection = async () => {
               </div>
             )
           ) : (
-            <OrbitalVisualization
-              simulationData={simulationData}
-              currentFrame={currentFrame}
-              isPlaying={isPlaying}
-              showTrajectory={true}
-              showInfo={true}
-              className="h-full w-full"
-            />
+            <div className="h-full w-full" />
           )}
 
           {viewMode === 'solar' && (
@@ -1244,6 +1414,52 @@ const checkBackendConnection = async () => {
           )}
 
           {viewMode === 'orbit' && (
+            <div className="pointer-events-none absolute top-24 right-6 z-30 flex flex-col w-80 max-w-full">
+              <div className="pointer-events-auto bg-transparent border border-transparent rounded-2xl p-4 space-y-3 text-gray-100">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-100 mb-2">IMPACTOR-2025</h3>
+                  <div className="text-xs text-gray-300 mb-3">
+                    Cargar meteorito hipotético para simulación de impacto
+                  </div>
+                  {error && currentNeoName === 'IMPACTOR-2025' && (
+                    <div className="text-xs text-red-400 mb-3">
+                      {typeof error === 'string' ? error : error.error}
+                    </div>
+                  )}
+                  {isLoading && currentNeoName === 'IMPACTOR-2025' && (
+                    <div className="text-xs text-red-300 mb-3">Cargando IMPACTOR-2025...</div>
+                  )}
+                  {currentNeoName === 'IMPACTOR-2025' && currentNeoOrbit && (
+                    <div className="text-xs text-gray-200 bg-transparent border border-transparent rounded-lg p-3 space-y-1 mb-3">
+                      <div className="text-sm text-gray-100 font-semibold">IMPACTOR-2025 cargado:</div>
+                      <div className="text-red-300 font-semibold">⚠️ Objeto con trayectoria de impacto potencial</div>
+                      <div>Período orbital: {currentNeoOrbit.orbitalPeriodDays?.toFixed(1)} días</div>
+                      <div>Semi-eje mayor: {(currentNeoOrbit.semiMajorAxisKm / 149597870.7).toFixed(3)} AU</div>
+                      <div>Excentricidad: {currentNeoOrbit.eccentricity?.toFixed(3)}</div>
+                      <div>Inclinación: {currentNeoOrbit.inclinationDeg?.toFixed(1)}°</div>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleLoadImpactorForNeoSimulation}
+                    disabled={isLoading || connectionStatus !== 'connected'}
+                    className={`w-full px-4 py-2 rounded-lg border transition-colors text-sm font-medium ${
+                      isLoading || connectionStatus !== 'connected'
+                        ? 'bg-gray-700/40 border-gray-500/60 text-gray-400 cursor-not-allowed'
+                        : 'bg-red-600/80 border-red-500 text-white hover:bg-red-700/90'
+                    }`}
+                  >
+                    {isLoading && currentNeoName === 'IMPACTOR-2025' ? 'Cargando...' : '🚀 Cargar IMPACTOR-2025'}
+                  </button>
+                </div>
+                <div className="text-[11px] text-gray-300">
+                  Esto cargará los elementos orbitales de IMPACTOR-2025 en la simulación.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {viewMode === 'orbit' && (
             <div className="pointer-events-none absolute inset-0 z-20 flex">
               <div
                 className={`mt-24 mb-6 ml-4 w-80 max-h-[calc(100%-7rem)] overflow-y-auto rounded-2xl border border-transparent bg-transparent transition-all duration-300 ease-in-out transform ${
@@ -1270,24 +1486,51 @@ const checkBackendConnection = async () => {
 
         {viewMode === 'orbit' && (
           <div
-            className="pointer-events-none fixed bottom-6 z-20 flex justify-center"
+            className="pointer-events-none fixed bottom-6 z-20 flex justify-center w-full"
             style={bottomPanelStyle}
           >
-            <div className="pointer-events-auto mx-4 w-full max-w-5xl rounded-2xl border border-transparent bg-transparent">
-              <AnimationControls
-                isPlaying={isPlaying}
-                onPlay={handlePlay}
-                onPause={handlePause}
-                onReset={handleReset}
-                currentFrame={currentFrame}
-                totalFrames={totalFrames}
-                onFrameSeek={handleFrameSeek}
-                speed={animationSpeed}
-                onSpeedChange={handleSpeedChange}
-                simulationData={simulationData}
-                disabled={isLoading || !simulationData}
-                className="rounded-2xl"
-              />
+            <div className="pointer-events-auto mx-4 w-full max-w-4xl rounded-2xl border border-transparent bg-transparent px-6 py-4">
+              <div className="flex flex-col gap-3 text-sm text-gray-200">
+                <div className="text-xs text-gray-300">
+                  Objeto simulado: <span className="text-gray-100 font-semibold">{currentNeoName}</span>
+                </div>
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <span className="font-semibold text-gray-100">Velocidad de simulación</span>
+                  <span className="text-gray-300">
+                    1 s real = <span className="text-purple-300 font-semibold">{neoTimeScaleLabel}</span> simulados ({neoTimeScale.toLocaleString()} s)
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={2592000}
+                  step={1}
+                  value={neoTimeScale}
+                  onChange={(event) => setNeoTimeScale(Number(event.target.value))}
+                  className="slider-range"
+                />
+                <div className="flex items-center flex-wrap gap-2">
+                  {neoSpeedPresets.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setNeoTimeScale(preset)}
+                      className={`px-3 py-1 rounded-md border transition-colors ${
+                        neoTimeScale === preset
+                          ? 'bg-purple-600 border-purple-500 text-white'
+                          : 'bg-transparent border-white/10 text-gray-200 hover:bg-white/10'
+                      }`}
+                    >
+                      {formatSolarScale(preset)}
+                    </button>
+                  ))}
+                </div>
+                {solarGeneratedLabel && (
+                  <div className="text-xs text-gray-300">
+                    Datos generados: <span className="text-gray-100">{solarGeneratedLabel}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

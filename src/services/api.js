@@ -189,6 +189,19 @@ export class MeteorMadnessAPI {
   /**
    * Obtiene los datos del meteorito IMPACTOR-2025
    */
+  static async getSolarSystemStateJ2000() {
+    try {
+      const response = await api.get('/api/solar/system/j2000');
+      return { success: true, data: response.data.data };
+    } catch (error) {
+      const errorData = error.response?.data || { error: error.message };
+      return { success: false, error: errorData };
+    }
+  }
+
+  /**
+   * Obtiene los datos del meteorito IMPACTOR-2025
+   */
   static async getImpactor2025() {
     try {
       const response = await api.get('/api/impactor/2025');
