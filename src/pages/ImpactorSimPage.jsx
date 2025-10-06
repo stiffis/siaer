@@ -3,6 +3,7 @@ import SolarSystemVisualization from '../components/SolarSystemVisualization';
 
 export default function ImpactorSimPage({
   onGoBack,
+  onNextPhase,
   solarSystemData,
   solarSystemError,
   isLoadingSolar,
@@ -198,10 +199,11 @@ export default function ImpactorSimPage({
     });
   }, [collisionEvent]);
 
-  const handleNextPhase = useCallback(() => {
-    // Por ahora no hace nada, pero aquí se implementará la lógica de la siguiente fase
-    console.log('Pasar a la siguiente fase - funcionalidad pendiente');
-  }, []);
+  const handleNextPhaseClick = useCallback(() => {
+    if (onNextPhase) {
+      onNextPhase();
+    }
+  }, [onNextPhase]);
 
   const formatScale = useCallback((scale) => {
     if (scale < 60) return `${scale.toFixed(0)} s`;
@@ -304,21 +306,6 @@ export default function ImpactorSimPage({
             <img src="/logo.svg" alt="SIAER logo" className="h-12 w-12 mr-4" />
             <div>
               <h1 className="text-3xl font-bold text-white tracking-wide">Impactor Simulation</h1>
-              <p className="text-sm text-indigo-200">Vista dedicada para explorar la fase II del impacto</p>
-              {j2000Data && (
-                <p className="text-xs text-yellow-300 mt-1">📅 Using reference orbital data</p>
-              )}
-              <button 
-                onClick={() => {
-                  console.log('Final planets:', finalPlanets);
-                  console.log('J2000 data:', j2000Data);
-                  console.log('Solar system data:', solarSystemData);
-                  console.log('Tierra J2000:', finalPlanets.find(p => p.name === 'Tierra')?.meanAnomalyDeg);
-                }}
-                className="text-xs text-blue-300 mt-1 underline"
-              >
-                Debug Data
-              </button>
             </div>
           </div>
 
@@ -1273,8 +1260,8 @@ export default function ImpactorSimPage({
           ? 'opacity-100 translate-y-0 scale-100' 
           : 'opacity-0 translate-y-4 scale-95'
       }`} style={{transitionDelay: showNextPhaseButton ? '500ms' : '0ms'}}>
-        <button
-          onClick={handleNextPhase}
+                <button
+                  onClick={handleNextPhaseClick}
           className="px-6 py-3 bg-gradient-to-r from-purple-600/90 to-pink-600/90 hover:from-purple-500/90 hover:to-pink-500/90 text-white rounded-lg transition-all duration-300 font-semibold border border-purple-400/60 shadow-lg hover:shadow-purple-900/40 transform hover:scale-105 active:scale-95"
         >
           <span className="flex items-center space-x-2">

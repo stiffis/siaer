@@ -8,6 +8,8 @@ import ControlPanel from './components/ControlPanel';
 import SolarSystemVisualization from './components/SolarSystemVisualization';
 import ImpactorPage from './pages/ImpactorPage';
 import ImpactorSimPage from './pages/ImpactorSimPage';
+import CalcPage from './pages/CalcPage';
+import MapPage from './pages/MapPage';
 import MeteorMadnessAPI from './services/api';
 
 function App() {
@@ -60,6 +62,8 @@ function App() {
   const [currentNeoName, setCurrentNeoName] = useState('NEO');
   const [showImpactorPage, setShowImpactorPage] = useState(false);
   const [showImpactorSimPage, setShowImpactorSimPage] = useState(false);
+  const [showCalcPage, setShowCalcPage] = useState(false);
+  const [showMapPage, setShowMapPage] = useState(false);
 
   // Estados de animación
   // Referencias
@@ -343,6 +347,34 @@ const checkBackendConnection = async () => {
       markIntroLoaded(sessionId);
     }, 600);
   }, [markIntroLoaded, startIntro]);
+
+  const handleNextPhase = useCallback(() => {
+    startIntro(true);
+    const sessionId = introSessionRef.current.id;
+    setShowCalcPage(true);
+
+    setTimeout(() => {
+      markIntroLoaded(sessionId);
+    }, 600);
+  }, [markIntroLoaded, startIntro]);
+
+  const handleCalcBack = useCallback(() => {
+    startIntro(true);
+    const sessionId = introSessionRef.current.id;
+    setShowCalcPage(false);
+
+    setTimeout(() => {
+      markIntroLoaded(sessionId);
+    }, 600);
+  }, [markIntroLoaded, startIntro]);
+
+  const handleMapClick = useCallback(() => {
+    setShowMapPage(true);
+  }, []);
+
+  const handleMapBack = useCallback(() => {
+    setShowMapPage(false);
+  }, []);
 
   const handleSolarSpeedChange = useCallback((event) => {
     setSolarTimeScale(Number(event.target.value));
@@ -1038,11 +1070,22 @@ const checkBackendConnection = async () => {
 
   // Render principal
   
+  // Si se debe mostrar la página de mapas, renderizarla en lugar del contenido principal
+  if (showMapPage) {
+    return <MapPage onGoBack={handleMapBack} />;
+  }
+
+  // Si se debe mostrar la página de calculadora, renderizarla en lugar del contenido principal
+  if (showCalcPage) {
+    return <CalcPage onGoBack={handleCalcBack} onMapClick={handleMapClick} />;
+  }
+
   // Si se debe mostrar la página de impactos, renderizarla en lugar del contenido principal
   if (showImpactorSimPage) {
     return (
       <ImpactorSimPage
         onGoBack={handleImpactorSimBack}
+        onNextPhase={handleNextPhase}
         solarSystemData={solarSystemData}
         solarSystemError={solarError}
         isLoadingSolar={isLoadingSolar}

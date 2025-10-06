@@ -1,0 +1,797 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Detección Satelital</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        background: #000;
+        overflow: hidden;
+        height: 100vh;
+        font-family: "Courier New", monospace;
+        color: #0f0;
+      }
+
+      .space-view {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(
+          ellipse at center,
+          #0a0a1a 0%,
+          #000000 100%
+        );
+      }
+
+      .stars-layer {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+      }
+
+      .star {
+        position: absolute;
+        background: white;
+        border-radius: 50%;
+        animation: starTwinkle 2s infinite alternate;
+      }
+
+      @keyframes starTwinkle {
+        0%,
+        100% {
+          opacity: 0.3;
+        }
+
+        50% {
+          opacity: 1;
+        }
+      }
+
+      .meteorite {
+        position: absolute;
+        width: 50px;
+        height: 45px;
+        top: 20%;
+        left: 35%;
+        background:
+          radial-gradient(ellipse at 15% 20%, #6b5a42 0%, transparent 25%),
+          radial-gradient(ellipse at 70% 60%, #4a3a2a 0%, transparent 30%),
+          radial-gradient(ellipse at 40% 80%, #3a2a1a 0%, transparent 25%),
+          radial-gradient(
+            ellipse at 25% 25%,
+            #9b8a6f,
+            #6b5a42,
+            #4a3a2a,
+            #2a1a0a
+          );
+        clip-path: polygon(
+          30% 0%,
+          70% 5%,
+          85% 15%,
+          95% 35%,
+          98% 60%,
+          90% 80%,
+          70% 95%,
+          45% 98%,
+          20% 90%,
+          8% 75%,
+          3% 50%,
+          5% 30%,
+          15% 10%
+        );
+        box-shadow:
+          inset -8px -8px 20px rgba(0, 0, 0, 0.9),
+          inset 5px 5px 15px rgba(155, 138, 111, 0.2),
+          0 0 40px rgba(255, 107, 53, 0.4),
+          0 0 60px rgba(255, 69, 0, 0.2);
+        animation: meteoriteMove 15s ease-in-out forwards;
+        transform-origin: center;
+        filter: contrast(1.2) brightness(0.9);
+      }
+
+      .meteorite::before {
+        content: "";
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background:
+          radial-gradient(
+            circle at 25% 30%,
+            rgba(20, 10, 5, 0.9) 0%,
+            transparent 8%
+          ),
+          radial-gradient(
+            circle at 60% 45%,
+            rgba(20, 10, 5, 0.8) 0%,
+            transparent 10%
+          ),
+          radial-gradient(
+            circle at 35% 70%,
+            rgba(20, 10, 5, 0.7) 0%,
+            transparent 7%
+          ),
+          radial-gradient(
+            circle at 75% 25%,
+            rgba(20, 10, 5, 0.85) 0%,
+            transparent 9%
+          ),
+          radial-gradient(
+            circle at 15% 60%,
+            rgba(20, 10, 5, 0.75) 0%,
+            transparent 6%
+          ),
+          radial-gradient(
+            circle at 80% 70%,
+            rgba(20, 10, 5, 0.8) 0%,
+            transparent 8%
+          ),
+          radial-gradient(
+            circle at 45% 15%,
+            rgba(20, 10, 5, 0.7) 0%,
+            transparent 7%
+          );
+        border-radius: inherit;
+      }
+
+      .meteorite::after {
+        content: "";
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(
+          ellipse at 35% 25%,
+          rgba(200, 180, 140, 0.15),
+          transparent 60%
+        );
+        top: 0;
+        left: 0;
+      }
+
+      @keyframes meteoriteMove {
+        0% {
+          transform: translate(0, 0) scale(0.3) rotate(0deg);
+          opacity: 0;
+          top: 20%;
+          left: 35%;
+        }
+
+        15% {
+          transform: translate(0, 0) scale(0.3) rotate(20deg);
+          opacity: 1;
+          top: 20%;
+          left: 35%;
+        }
+
+        25% {
+          transform: translate(0, 0) scale(0.5) rotate(40deg);
+          top: 25%;
+          left: 38%;
+        }
+
+        50% {
+          transform: translate(0, 0) scale(2) rotate(90deg);
+          top: 35%;
+          left: 43%;
+        }
+
+        75% {
+          transform: translate(0, 0) scale(5) rotate(140deg);
+          top: 45%;
+          left: 48%;
+        }
+
+        100% {
+          transform: translate(0, 0) scale(8) rotate(180deg);
+          top: 50%;
+          left: 50%;
+        }
+      }
+
+      .meteorite-trail {
+        position: absolute;
+        width: 100px;
+        height: 3px;
+        background: linear-gradient(
+          to left,
+          rgba(255, 107, 53, 0.8),
+          transparent
+        );
+        top: 20%;
+        left: 25%;
+        animation: trailMove 15s ease-in-out forwards;
+      }
+
+      @keyframes trailMove {
+        0%,
+        15% {
+          opacity: 1;
+          top: 20%;
+          left: 25%;
+        }
+
+        25% {
+          opacity: 0.8;
+          top: 22%;
+          left: 30%;
+        }
+
+        30%,
+        100% {
+          opacity: 0;
+        }
+      }
+
+      .detection-grid {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image:
+          linear-gradient(rgba(0, 255, 0, 0.1) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0, 255, 0, 0.1) 1px, transparent 1px);
+        background-size: 50px 50px;
+        animation: gridFade 15s ease-in-out forwards;
+        pointer-events: none;
+      }
+
+      @keyframes gridFade {
+        0%,
+        20% {
+          opacity: 1;
+        }
+
+        30%,
+        100% {
+          opacity: 0;
+        }
+      }
+
+      .scan-line {
+        position: absolute;
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(to right, transparent, #0f0, transparent);
+        top: 0;
+        animation: scanMove 3s linear infinite;
+        box-shadow: 0 0 10px #0f0;
+      }
+
+      @keyframes scanMove {
+        0% {
+          top: 0;
+        }
+
+        100% {
+          top: 100%;
+        }
+      }
+
+      .target-lock {
+        position: absolute;
+        width: 150px;
+        height: 150px;
+        top: calc(20% - 75px);
+        left: calc(35% - 75px);
+        border: 2px solid #0f0;
+        animation: targetLockMove 15s ease-in-out forwards;
+        pointer-events: none;
+      }
+
+      .target-lock::before,
+      .target-lock::after {
+        content: "";
+        position: absolute;
+        background: #0f0;
+      }
+
+      .target-lock::before {
+        width: 20px;
+        height: 2px;
+        top: 50%;
+        left: -25px;
+      }
+
+      .target-lock::after {
+        width: 2px;
+        height: 20px;
+        top: -25px;
+        left: 50%;
+      }
+
+      .corner {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        border: 2px solid #0f0;
+      }
+
+      .corner.tl {
+        top: -2px;
+        left: -2px;
+        border-right: none;
+        border-bottom: none;
+      }
+
+      .corner.tr {
+        top: -2px;
+        right: -2px;
+        border-left: none;
+        border-bottom: none;
+      }
+
+      .corner.bl {
+        bottom: -2px;
+        left: -2px;
+        border-right: none;
+        border-top: none;
+      }
+
+      .corner.br {
+        bottom: -2px;
+        right: -2px;
+        border-left: none;
+        border-top: none;
+      }
+
+      @keyframes targetLockMove {
+        0% {
+          opacity: 0;
+          transform: scale(2);
+          top: calc(20% - 75px);
+          left: calc(35% - 75px);
+        }
+
+        10% {
+          opacity: 1;
+          transform: scale(1);
+          top: calc(20% - 75px);
+          left: calc(35% - 75px);
+        }
+
+        15% {
+          border-color: #0f0;
+        }
+
+        16% {
+          border-color: #ff0;
+        }
+
+        17% {
+          border-color: #0f0;
+        }
+
+        18% {
+          border-color: #ff0;
+        }
+
+        19% {
+          border-color: #0f0;
+        }
+
+        25% {
+          transform: scale(1);
+          top: calc(25% - 75px);
+          left: calc(38% - 75px);
+        }
+
+        50% {
+          transform: scale(0.8);
+          top: calc(35% - 60px);
+          left: calc(43% - 60px);
+        }
+
+        75% {
+          transform: scale(0.5);
+          top: calc(45% - 37.5px);
+          left: calc(48% - 37.5px);
+        }
+
+        100% {
+          transform: scale(0.3);
+          top: calc(50% - 22.5px);
+          left: calc(50% - 22.5px);
+        }
+      }
+
+      .hud {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        color: #0f0;
+        font-size: 14px;
+        text-shadow: 0 0 5px #0f0;
+        z-index: 100;
+      }
+
+      .hud-line {
+        margin: 5px 0;
+        opacity: 0;
+        animation: hudAppear 0.5s ease-in forwards;
+      }
+
+      .hud-line:nth-child(1) {
+        animation-delay: 1s;
+      }
+
+      .hud-line:nth-child(2) {
+        animation-delay: 1.5s;
+      }
+
+      .hud-line:nth-child(3) {
+        animation-delay: 2s;
+      }
+
+      @keyframes hudAppear {
+        to {
+          opacity: 1;
+        }
+      }
+
+      .status {
+        color: #ff0;
+        animation: statusBlink 1s infinite;
+      }
+
+      @keyframes statusBlink {
+        0%,
+        50% {
+          opacity: 1;
+        }
+
+        51%,
+        100% {
+          opacity: 0.3;
+        }
+      }
+
+      .spectrum-panel {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        width: 280px;
+        background: rgba(0, 0, 0, 0.8);
+        border: 2px solid #0f0;
+        padding: 10px;
+        opacity: 0;
+        animation: panelAppear 1s ease-in forwards;
+        animation-delay: 4s;
+      }
+
+      @keyframes panelAppear {
+        to {
+          opacity: 1;
+        }
+      }
+
+      .spectrum-title {
+        color: #0f0;
+        font-size: 13px;
+        margin-bottom: 8px;
+        text-align: center;
+        text-transform: uppercase;
+      }
+
+      .spectrum-graph {
+        width: 100%;
+        height: 100px;
+        position: relative;
+        border: 1px solid #0f0;
+        background: rgba(0, 20, 0, 0.5);
+        margin-bottom: 8px;
+      }
+
+      .spectrum-bar {
+        position: absolute;
+        bottom: 0;
+        width: 8%;
+        background: linear-gradient(to top, #0f0, #0f0 50%, transparent);
+        animation: barGrow 2s ease-out forwards;
+      }
+
+      @keyframes barGrow {
+        from {
+          height: 0;
+        }
+      }
+
+      .spectrum-bar:nth-child(1) {
+        left: 2%;
+        height: 60%;
+        animation-delay: 4.2s;
+        background: linear-gradient(to top, #ff0000, #ff0000 60%, transparent);
+      }
+
+      .spectrum-bar:nth-child(2) {
+        left: 12%;
+        height: 75%;
+        animation-delay: 4.3s;
+        background: linear-gradient(to top, #ff4500, #ff4500 75%, transparent);
+      }
+
+      .spectrum-bar:nth-child(3) {
+        left: 22%;
+        height: 85%;
+        animation-delay: 4.4s;
+        background: linear-gradient(to top, #ffa500, #ffa500 85%, transparent);
+      }
+
+      .spectrum-bar:nth-child(4) {
+        left: 32%;
+        height: 90%;
+        animation-delay: 4.5s;
+        background: linear-gradient(to top, #ffff00, #ffff00 90%, transparent);
+      }
+
+      .spectrum-bar:nth-child(5) {
+        left: 42%;
+        height: 70%;
+        animation-delay: 4.6s;
+        background: linear-gradient(to top, #00ff00, #00ff00 70%, transparent);
+      }
+
+      .spectrum-bar:nth-child(6) {
+        left: 52%;
+        height: 55%;
+        animation-delay: 4.7s;
+        background: linear-gradient(to top, #00ffff, #00ffff 55%, transparent);
+      }
+
+      .spectrum-bar:nth-child(7) {
+        left: 62%;
+        height: 45%;
+        animation-delay: 4.8s;
+        background: linear-gradient(to top, #0000ff, #0000ff 45%, transparent);
+      }
+
+      .spectrum-bar:nth-child(8) {
+        left: 72%;
+        height: 35%;
+        animation-delay: 4.9s;
+        background: linear-gradient(to top, #8b00ff, #8b00ff 35%, transparent);
+      }
+
+      .spectrum-bar:nth-child(9) {
+        left: 82%;
+        height: 50%;
+        animation-delay: 5s;
+        background: linear-gradient(to top, #ff00ff, #ff00ff 50%, transparent);
+      }
+
+      .composition {
+        color: #0f0;
+        font-size: 10px;
+        line-height: 1.5;
+      }
+
+      .composition-item {
+        display: flex;
+        justify-content: space-between;
+        margin: 2px 0;
+        opacity: 0;
+        animation: itemAppear 0.3s ease-in forwards;
+      }
+
+      .composition-item:nth-child(1) {
+        animation-delay: 5.2s;
+      }
+
+      .composition-item:nth-child(2) {
+        animation-delay: 5.4s;
+      }
+
+      .composition-item:nth-child(3) {
+        animation-delay: 5.6s;
+      }
+
+      .composition-item:nth-child(4) {
+        animation-delay: 5.8s;
+      }
+
+      .composition-item:nth-child(5) {
+        animation-delay: 6s;
+      }
+
+      .composition-item:nth-child(6) {
+        animation-delay: 6.2s;
+      }
+
+      @keyframes itemAppear {
+        to {
+          opacity: 1;
+        }
+      }
+
+      .percentage {
+        color: #ff0;
+      }
+
+      .distance-indicator {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: #0f0;
+        font-size: 48px;
+        font-weight: bold;
+        text-shadow: 0 0 20px #0f0;
+        opacity: 0;
+        animation: distanceChange 15s ease-in-out forwards;
+      }
+
+      @keyframes distanceChange {
+        0%,
+        20% {
+          opacity: 0;
+        }
+
+        25% {
+          opacity: 1;
+          content: "15,000 KM";
+        }
+
+        30% {
+          content: "12,000 KM";
+        }
+
+        40% {
+          content: "8,000 KM";
+        }
+
+        50% {
+          content: "5,000 KM";
+        }
+
+        60% {
+          content: "2,000 KM";
+        }
+
+        70% {
+          content: "1,000 KM";
+        }
+
+        80% {
+          content: "500 KM";
+        }
+
+        90% {
+          content: "100 KM";
+        }
+
+        100% {
+          opacity: 0;
+        }
+      }
+
+      .zoom-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: #ff0;
+        font-size: 24px;
+        font-weight: bold;
+        text-shadow: 0 0 10px #ff0;
+        opacity: 0;
+        animation: zoomTextAppear 3s ease-in-out;
+        animation-delay: 3.5s;
+      }
+
+      @keyframes zoomTextAppear {
+        0%,
+        100% {
+          opacity: 0;
+        }
+
+        50% {
+          opacity: 1;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="space-view">
+      <div class="stars-layer" id="stars"></div>
+      <div class="detection-grid"></div>
+      <div class="scan-line"></div>
+
+      <div class="meteorite-trail"></div>
+      <div class="meteorite"></div>
+
+      <div class="target-lock">
+        <div class="corner tl"></div>
+        <div class="corner tr"></div>
+        <div class="corner bl"></div>
+        <div class="corner br"></div>
+      </div>
+
+      <div class="hud">
+        <div class="hud-line">SYSTEM: <span class="status">ACTIVE</span></div>
+        <div class="hud-line">SATELLITE: ORBITAL-7X</div>
+        <div class="hud-line">VELOCITY: 28.4 KM/S</div>
+      </div>
+
+      <div class="distance-indicator" id="distance">15,000 KM</div>
+      <div class="zoom-text">INITIATING ZOOM...</div>
+
+      <div class="spectrum-panel">
+        <div class="spectrum-title">⚛ Spectral Analysis ⚛</div>
+        <div class="spectrum-graph">
+          <div class="spectrum-bar"></div>
+          <div class="spectrum-bar"></div>
+          <div class="spectrum-bar"></div>
+          <div class="spectrum-bar"></div>
+          <div class="spectrum-bar"></div>
+          <div class="spectrum-bar"></div>
+          <div class="spectrum-bar"></div>
+          <div class="spectrum-bar"></div>
+          <div class="spectrum-bar"></div>
+        </div>
+        <div class="composition">
+          <div class="composition-item">
+            <span>Iron (Fe)</span>
+            <span class="percentage">32.5%</span>
+          </div>
+          <div class="composition-item">
+            <span>Nickel (Ni)</span>
+            <span class="percentage">18.3%</span>
+          </div>
+          <div class="composition-item">
+            <span>Silicates</span>
+            <span class="percentage">25.8%</span>
+          </div>
+          <div class="composition-item">
+            <span>Carbon (C)</span>
+            <span class="percentage">12.1%</span>
+          </div>
+          <div class="composition-item">
+            <span>Magnesium (Mg)</span>
+            <span class="percentage">8.7%</span>
+          </div>
+          <div class="composition-item">
+            <span>Other elements</span>
+            <span class="percentage">2.6%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Generate stars
+      const starsContainer = document.getElementById("stars");
+      for (let i = 0; i < 200; i++) {
+        const star = document.createElement("div");
+        star.className = "star";
+        star.style.width = Math.random() * 2 + 1 + "px";
+        star.style.height = star.style.width;
+        star.style.left = Math.random() * 100 + "%";
+        star.style.top = Math.random() * 100 + "%";
+        star.style.animationDelay = Math.random() * 2 + "s";
+        star.style.animationDuration = Math.random() * 2 + 1 + "s";
+        starsContainer.appendChild(star);
+      }
+
+      // Update distance dynamically
+      const distanceEl = document.getElementById("distance");
+      const distances = [15000, 12000, 8000, 5000, 2000, 1000, 500, 100, 50];
+      let index = 0;
+
+      const updateDistance = setInterval(() => {
+        if (index < distances.length) {
+          distanceEl.textContent = distances[index].toLocaleString() + " KM";
+          index++;
+        } else {
+          clearInterval(updateDistance);
+        }
+      }, 1500);
+    </script>
+  </body>
+</html>

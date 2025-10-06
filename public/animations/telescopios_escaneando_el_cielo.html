@@ -1,0 +1,991 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Telescopios Escaneando</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        background: linear-gradient(
+          to bottom,
+          #0a0e27 0%,
+          #1a1f3a 50%,
+          #2d1b4e 100%
+        );
+        overflow: hidden;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+
+      .stars {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      .star {
+        position: absolute;
+        background: white;
+        border-radius: 50%;
+        animation: twinkle 3s infinite alternate;
+      }
+
+      @keyframes twinkle {
+        0%,
+        100% {
+          opacity: 0.3;
+        }
+
+        50% {
+          opacity: 1;
+        }
+      }
+
+      .container {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-around;
+        padding: 0 50px 50px 50px;
+        position: relative;
+      }
+
+      .telescope-wrapper {
+        position: relative;
+        transform-origin: bottom center;
+      }
+
+      .telescope-wrapper:nth-child(1) {
+        animation: scan1 8s ease-in-out infinite;
+      }
+
+      .telescope-wrapper:nth-child(2) {
+        animation: scan2 10s ease-in-out infinite;
+        animation-delay: -2s;
+      }
+
+      .telescope-wrapper:nth-child(3) {
+        animation: scan3 12s ease-in-out infinite;
+        animation-delay: -4s;
+      }
+
+      @keyframes scan1 {
+        0%,
+        100% {
+          transform: rotate(-30deg);
+        }
+
+        50% {
+          transform: rotate(30deg);
+        }
+      }
+
+      @keyframes scan2 {
+        0%,
+        100% {
+          transform: rotate(-40deg);
+        }
+
+        50% {
+          transform: rotate(25deg);
+        }
+      }
+
+      @keyframes scan3 {
+        0%,
+        100% {
+          transform: rotate(-25deg);
+        }
+
+        50% {
+          transform: rotate(40deg);
+        }
+      }
+
+      .scan-beam {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 2px;
+        height: 0;
+        background: linear-gradient(
+          to top,
+          rgba(100, 200, 255, 0.6),
+          rgba(100, 200, 255, 0)
+        );
+        animation: beam 3s ease-in-out infinite;
+        transform-origin: bottom center;
+        clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+      }
+
+      .telescope-wrapper:nth-child(1) .scan-beam {
+        animation-delay: 0s;
+        width: 120px;
+      }
+
+      .telescope-wrapper:nth-child(2) .scan-beam {
+        animation-delay: 1s;
+        width: 120px;
+      }
+
+      .telescope-wrapper:nth-child(3) .scan-beam {
+        animation-delay: 2s;
+        width: 120px;
+      }
+
+      @keyframes beam {
+        0%,
+        100% {
+          height: 0;
+          opacity: 0;
+        }
+
+        10% {
+          height: 400px;
+          opacity: 1;
+        }
+
+        90% {
+          height: 400px;
+          opacity: 1;
+        }
+      }
+
+      .scan-cone {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100px;
+        height: 400px;
+        background: linear-gradient(
+          to top,
+          rgba(100, 200, 255, 0.15),
+          rgba(100, 200, 255, 0)
+        );
+        clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+        animation: cone 3s ease-in-out infinite;
+        transform-origin: bottom center;
+      }
+
+      .telescope-wrapper:nth-child(1) .scan-cone {
+        animation-delay: 0s;
+      }
+
+      .telescope-wrapper:nth-child(2) .scan-cone {
+        animation-delay: 1s;
+      }
+
+      .telescope-wrapper:nth-child(3) .scan-cone {
+        animation-delay: 2s;
+      }
+
+      @keyframes cone {
+        0%,
+        100% {
+          opacity: 0;
+          transform: translateX(-50%) scaleY(0);
+        }
+
+        10% {
+          opacity: 1;
+          transform: translateX(-50%) scaleY(1);
+        }
+
+        90% {
+          opacity: 1;
+          transform: translateX(-50%) scaleY(1);
+        }
+      }
+
+      .telescope {
+        filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.5));
+      }
+
+      .ground {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 80px;
+        background: linear-gradient(to bottom, #1a2332, #0f1419);
+        border-top: 2px solid #2a3f5f;
+      }
+
+      .moon {
+        position: absolute;
+        top: 10%;
+        right: 15%;
+        width: 100px;
+        height: 100px;
+        background: radial-gradient(circle at 30% 30%, #fff, #d4d4d4);
+        border-radius: 50%;
+        box-shadow: 0 0 50px rgba(255, 255, 255, 0.3);
+        animation: moonGlow 4s ease-in-out infinite alternate;
+      }
+
+      @keyframes moonGlow {
+        0% {
+          box-shadow: 0 0 50px rgba(255, 255, 255, 0.3);
+        }
+
+        100% {
+          box-shadow: 0 0 80px rgba(255, 255, 255, 0.5);
+        }
+      }
+
+      .shooting-star {
+        position: absolute;
+        width: 0px;
+        height: 0px;
+        opacity: 0;
+      }
+
+      .shooting-star::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: 0px;
+        width: 80px;
+        height: 2px;
+        background: linear-gradient(
+          to right,
+          rgba(255, 255, 255, 0.8),
+          transparent
+        );
+      }
+
+      .shooting-star:nth-child(1) {
+        top: 15%;
+        left: 20%;
+        animation: shoot1 3s ease-in infinite;
+        animation-delay: 2s;
+      }
+
+      .shooting-star:nth-child(2) {
+        top: 30%;
+        left: 60%;
+        animation: shoot2 2.5s ease-in infinite;
+        animation-delay: 5s;
+      }
+
+      .shooting-star:nth-child(3) {
+        top: 20%;
+        left: 80%;
+        animation: shoot3 3.5s ease-in infinite;
+        animation-delay: 8s;
+      }
+
+      .shooting-star:nth-child(4) {
+        top: 40%;
+        left: 30%;
+        animation: shoot4 2.8s ease-in infinite;
+        animation-delay: 11s;
+      }
+
+      @keyframes shoot1 {
+        0% {
+          opacity: 0;
+          transform: translate(0, 0) rotate(-45deg);
+        }
+
+        5% {
+          opacity: 1;
+        }
+
+        95% {
+          opacity: 1;
+        }
+
+        100% {
+          opacity: 0;
+          transform: translate(-200px, 200px) rotate(-45deg);
+        }
+      }
+
+      @keyframes shoot2 {
+        0% {
+          opacity: 0;
+          transform: translate(0, 0) rotate(-50deg);
+        }
+
+        5% {
+          opacity: 1;
+        }
+
+        95% {
+          opacity: 1;
+        }
+
+        100% {
+          opacity: 0;
+          transform: translate(-180px, 180px) rotate(-50deg);
+        }
+      }
+
+      @keyframes shoot3 {
+        0% {
+          opacity: 0;
+          transform: translate(0, 0) rotate(-40deg);
+        }
+
+        5% {
+          opacity: 1;
+        }
+
+        95% {
+          opacity: 1;
+        }
+
+        100% {
+          opacity: 0;
+          transform: translate(-220px, 220px) rotate(-40deg);
+        }
+      }
+
+      @keyframes shoot4 {
+        0% {
+          opacity: 0;
+          transform: translate(0, 0) rotate(-48deg);
+        }
+
+        5% {
+          opacity: 1;
+        }
+
+        95% {
+          opacity: 1;
+        }
+
+        100% {
+          opacity: 0;
+          transform: translate(-190px, 190px) rotate(-48deg);
+        }
+      }
+
+      .title {
+        position: absolute;
+        top: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #fff;
+        font-family: "Arial", sans-serif;
+        font-size: 2.5em;
+        font-weight: bold;
+        text-shadow: 0 0 20px rgba(100, 200, 255, 0.8);
+        letter-spacing: 3px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="stars" id="stars"></div>
+
+    <!-- Shooting stars -->
+    <div class="shooting-star"></div>
+    <div class="shooting-star"></div>
+    <div class="shooting-star"></div>
+    <div class="shooting-star"></div>
+
+    <div class="moon"></div>
+
+    <div class="container">
+      <div class="telescope-wrapper">
+        <div class="scan-cone"></div>
+        <div class="scan-beam"></div>
+        <svg class="telescope" width="120" height="220" viewBox="0 0 120 220">
+          <defs>
+            <linearGradient id="tubeGrad1" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" style="stop-color: #3a4a6a; stop-opacity: 1" />
+              <stop offset="50%" style="stop-color: #5a6f8f; stop-opacity: 1" />
+              <stop
+                offset="100%"
+                style="stop-color: #3a4a6a; stop-opacity: 1"
+              />
+            </linearGradient>
+            <radialGradient id="lensGrad1">
+              <stop offset="0%" style="stop-color: #e0f0ff; stop-opacity: 1" />
+              <stop offset="70%" style="stop-color: #8ab4f8; stop-opacity: 1" />
+              <stop
+                offset="100%"
+                style="stop-color: #4a7fc8; stop-opacity: 1"
+              />
+            </radialGradient>
+          </defs>
+
+          <!-- Tripod legs -->
+          <polygon
+            points="60,185 25,215 30,215 60,190"
+            fill="#3a4f6f"
+            stroke="#2a3f5f"
+            stroke-width="1"
+          />
+          <polygon
+            points="60,185 95,215 90,215 60,190"
+            fill="#4a5f7f"
+            stroke="#3a4f6f"
+            stroke-width="1"
+          />
+          <polygon
+            points="57,185 57,215 63,215 63,190"
+            fill="#4a5f7f"
+            stroke="#3a4f6f"
+            stroke-width="1"
+          />
+
+          <!-- Base platform -->
+          <ellipse cx="60" cy="185" rx="25" ry="8" fill="#2a3f5f" />
+          <ellipse cx="60" cy="182" rx="25" ry="8" fill="#3a4f6f" />
+
+          <!-- Central mount -->
+          <rect
+            x="54"
+            y="160"
+            width="12"
+            height="25"
+            fill="#4a5f7f"
+            stroke="#3a4f6f"
+            stroke-width="1"
+          />
+          <circle
+            cx="60"
+            cy="160"
+            r="10"
+            fill="#5a6f8f"
+            stroke="#4a5f7f"
+            stroke-width="2"
+          />
+
+          <!-- Mount arm -->
+          <rect
+            x="52"
+            y="145"
+            width="16"
+            height="20"
+            rx="2"
+            fill="#5a6f8f"
+            stroke="#4a5f7f"
+            stroke-width="1"
+          />
+          <circle cx="60" cy="145" r="6" fill="#6a7f9f" />
+
+          <!-- Main telescope tube -->
+          <ellipse
+            cx="60"
+            cy="95"
+            rx="20"
+            ry="55"
+            fill="url(#tubeGrad1)"
+            stroke="#2a3f5f"
+            stroke-width="2"
+          />
+
+          <!-- Tube segments -->
+          <rect
+            x="40"
+            y="85"
+            width="40"
+            height="4"
+            rx="2"
+            fill="#2a3f5f"
+            opacity="0.6"
+          />
+          <rect
+            x="40"
+            y="105"
+            width="40"
+            height="4"
+            rx="2"
+            fill="#2a3f5f"
+            opacity="0.6"
+          />
+          <rect
+            x="40"
+            y="125"
+            width="40"
+            height="4"
+            rx="2"
+            fill="#2a3f5f"
+            opacity="0.6"
+          />
+
+          <!-- Front lens housing -->
+          <ellipse cx="60" cy="40" rx="22" ry="10" fill="#4a5f7f" />
+          <ellipse cx="60" cy="38" rx="22" ry="10" fill="#5a6f8f" />
+          <ellipse cx="60" cy="38" rx="18" ry="8" fill="#1a2332" />
+
+          <!-- Main lens -->
+          <ellipse cx="60" cy="38" rx="16" ry="7" fill="url(#lensGrad1)" />
+          <ellipse
+            cx="60"
+            cy="36"
+            rx="12"
+            ry="5"
+            fill="#c4d7ff"
+            opacity="0.8"
+          />
+          <ellipse cx="56" cy="35" rx="4" ry="2" fill="white" opacity="0.6" />
+
+          <!-- Eyepiece -->
+          <rect
+            x="70"
+            y="120"
+            width="18"
+            height="12"
+            rx="2"
+            fill="#4a5f7f"
+            stroke="#3a4f6f"
+            stroke-width="1"
+          />
+          <rect x="88" y="123" width="8" height="6" rx="1" fill="#3a4f6f" />
+          <circle cx="79" cy="126" r="3" fill="#1a2332" />
+
+          <!-- Finder scope -->
+          <rect
+            x="42"
+            y="65"
+            width="8"
+            height="25"
+            rx="4"
+            fill="#3a4f6f"
+            stroke="#2a3f5f"
+            stroke-width="1"
+          />
+          <circle cx="46" cy="63" r="3" fill="#5a6f8f" />
+          <circle cx="46" cy="63" r="2" fill="#8ab4f8" />
+
+          <!-- Focusing knobs -->
+          <circle
+            cx="73"
+            cy="95"
+            r="4"
+            fill="#3a4f6f"
+            stroke="#2a3f5f"
+            stroke-width="1"
+          />
+          <circle
+            cx="73"
+            cy="110"
+            r="4"
+            fill="#3a4f6f"
+            stroke="#2a3f5f"
+            stroke-width="1"
+          />
+
+          <!-- Details and rivets -->
+          <circle cx="60" cy="70" r="2" fill="#8ab4f8" opacity="0.5" />
+          <circle cx="60" cy="100" r="2" fill="#8ab4f8" opacity="0.5" />
+          <circle cx="60" cy="130" r="2" fill="#8ab4f8" opacity="0.5" />
+        </svg>
+      </div>
+
+      <div class="telescope-wrapper">
+        <div class="scan-cone"></div>
+        <div class="scan-beam"></div>
+        <svg class="telescope" width="120" height="220" viewBox="0 0 120 220">
+          <defs>
+            <linearGradient id="tubeGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" style="stop-color: #3a4a6a; stop-opacity: 1" />
+              <stop offset="50%" style="stop-color: #5a6f8f; stop-opacity: 1" />
+              <stop
+                offset="100%"
+                style="stop-color: #3a4a6a; stop-opacity: 1"
+              />
+            </linearGradient>
+            <radialGradient id="lensGrad2">
+              <stop offset="0%" style="stop-color: #e0f0ff; stop-opacity: 1" />
+              <stop offset="70%" style="stop-color: #8ab4f8; stop-opacity: 1" />
+              <stop
+                offset="100%"
+                style="stop-color: #4a7fc8; stop-opacity: 1"
+              />
+            </radialGradient>
+          </defs>
+
+          <!-- Tripod legs -->
+          <polygon
+            points="60,185 25,215 30,215 60,190"
+            fill="#3a4f6f"
+            stroke="#2a3f5f"
+            stroke-width="1"
+          />
+          <polygon
+            points="60,185 95,215 90,215 60,190"
+            fill="#4a5f7f"
+            stroke="#3a4f6f"
+            stroke-width="1"
+          />
+          <polygon
+            points="57,185 57,215 63,215 63,190"
+            fill="#4a5f7f"
+            stroke="#3a4f6f"
+            stroke-width="1"
+          />
+
+          <!-- Base platform -->
+          <ellipse cx="60" cy="185" rx="25" ry="8" fill="#2a3f5f" />
+          <ellipse cx="60" cy="182" rx="25" ry="8" fill="#3a4f6f" />
+
+          <!-- Central mount -->
+          <rect
+            x="54"
+            y="160"
+            width="12"
+            height="25"
+            fill="#4a5f7f"
+            stroke="#3a4f6f"
+            stroke-width="1"
+          />
+          <circle
+            cx="60"
+            cy="160"
+            r="10"
+            fill="#5a6f8f"
+            stroke="#4a5f7f"
+            stroke-width="2"
+          />
+
+          <!-- Mount arm -->
+          <rect
+            x="52"
+            y="145"
+            width="16"
+            height="20"
+            rx="2"
+            fill="#5a6f8f"
+            stroke="#4a5f7f"
+            stroke-width="1"
+          />
+          <circle cx="60" cy="145" r="6" fill="#6a7f9f" />
+
+          <!-- Main telescope tube -->
+          <ellipse
+            cx="60"
+            cy="95"
+            rx="20"
+            ry="55"
+            fill="url(#tubeGrad2)"
+            stroke="#2a3f5f"
+            stroke-width="2"
+          />
+
+          <!-- Tube segments -->
+          <rect
+            x="40"
+            y="85"
+            width="40"
+            height="4"
+            rx="2"
+            fill="#2a3f5f"
+            opacity="0.6"
+          />
+          <rect
+            x="40"
+            y="105"
+            width="40"
+            height="4"
+            rx="2"
+            fill="#2a3f5f"
+            opacity="0.6"
+          />
+          <rect
+            x="40"
+            y="125"
+            width="40"
+            height="4"
+            rx="2"
+            fill="#2a3f5f"
+            opacity="0.6"
+          />
+
+          <!-- Front lens housing -->
+          <ellipse cx="60" cy="40" rx="22" ry="10" fill="#4a5f7f" />
+          <ellipse cx="60" cy="38" rx="22" ry="10" fill="#5a6f8f" />
+          <ellipse cx="60" cy="38" rx="18" ry="8" fill="#1a2332" />
+
+          <!-- Main lens -->
+          <ellipse cx="60" cy="38" rx="16" ry="7" fill="url(#lensGrad2)" />
+          <ellipse
+            cx="60"
+            cy="36"
+            rx="12"
+            ry="5"
+            fill="#c4d7ff"
+            opacity="0.8"
+          />
+          <ellipse cx="56" cy="35" rx="4" ry="2" fill="white" opacity="0.6" />
+
+          <!-- Eyepiece -->
+          <rect
+            x="70"
+            y="120"
+            width="18"
+            height="12"
+            rx="2"
+            fill="#4a5f7f"
+            stroke="#3a4f6f"
+            stroke-width="1"
+          />
+          <rect x="88" y="123" width="8" height="6" rx="1" fill="#3a4f6f" />
+          <circle cx="79" cy="126" r="3" fill="#1a2332" />
+
+          <!-- Finder scope -->
+          <rect
+            x="42"
+            y="65"
+            width="8"
+            height="25"
+            rx="4"
+            fill="#3a4f6f"
+            stroke="#2a3f5f"
+            stroke-width="1"
+          />
+          <circle cx="46" cy="63" r="3" fill="#5a6f8f" />
+          <circle cx="46" cy="63" r="2" fill="#8ab4f8" />
+
+          <!-- Focusing knobs -->
+          <circle
+            cx="73"
+            cy="95"
+            r="4"
+            fill="#3a4f6f"
+            stroke="#2a3f5f"
+            stroke-width="1"
+          />
+          <circle
+            cx="73"
+            cy="110"
+            r="4"
+            fill="#3a4f6f"
+            stroke="#2a3f5f"
+            stroke-width="1"
+          />
+
+          <!-- Details and rivets -->
+          <circle cx="60" cy="70" r="2" fill="#8ab4f8" opacity="0.5" />
+          <circle cx="60" cy="100" r="2" fill="#8ab4f8" opacity="0.5" />
+          <circle cx="60" cy="130" r="2" fill="#8ab4f8" opacity="0.5" />
+        </svg>
+      </div>
+
+      <div class="telescope-wrapper">
+        <div class="scan-cone"></div>
+        <div class="scan-beam"></div>
+        <svg class="telescope" width="120" height="220" viewBox="0 0 120 220">
+          <defs>
+            <linearGradient id="tubeGrad3" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" style="stop-color: #3a4a6a; stop-opacity: 1" />
+              <stop offset="50%" style="stop-color: #5a6f8f; stop-opacity: 1" />
+              <stop
+                offset="100%"
+                style="stop-color: #3a4a6a; stop-opacity: 1"
+              />
+            </linearGradient>
+            <radialGradient id="lensGrad3">
+              <stop offset="0%" style="stop-color: #e0f0ff; stop-opacity: 1" />
+              <stop offset="70%" style="stop-color: #8ab4f8; stop-opacity: 1" />
+              <stop
+                offset="100%"
+                style="stop-color: #4a7fc8; stop-opacity: 1"
+              />
+            </radialGradient>
+          </defs>
+
+          <!-- Tripod legs -->
+          <polygon
+            points="60,185 25,215 30,215 60,190"
+            fill="#3a4f6f"
+            stroke="#2a3f5f"
+            stroke-width="1"
+          />
+          <polygon
+            points="60,185 95,215 90,215 60,190"
+            fill="#4a5f7f"
+            stroke="#3a4f6f"
+            stroke-width="1"
+          />
+          <polygon
+            points="57,185 57,215 63,215 63,190"
+            fill="#4a5f7f"
+            stroke="#3a4f6f"
+            stroke-width="1"
+          />
+
+          <!-- Base platform -->
+          <ellipse cx="60" cy="185" rx="25" ry="8" fill="#2a3f5f" />
+          <ellipse cx="60" cy="182" rx="25" ry="8" fill="#3a4f6f" />
+
+          <!-- Central mount -->
+          <rect
+            x="54"
+            y="160"
+            width="12"
+            height="25"
+            fill="#4a5f7f"
+            stroke="#3a4f6f"
+            stroke-width="1"
+          />
+          <circle
+            cx="60"
+            cy="160"
+            r="10"
+            fill="#5a6f8f"
+            stroke="#4a5f7f"
+            stroke-width="2"
+          />
+
+          <!-- Mount arm -->
+          <rect
+            x="52"
+            y="145"
+            width="16"
+            height="20"
+            rx="2"
+            fill="#5a6f8f"
+            stroke="#4a5f7f"
+            stroke-width="1"
+          />
+          <circle cx="60" cy="145" r="6" fill="#6a7f9f" />
+
+          <!-- Main telescope tube -->
+          <ellipse
+            cx="60"
+            cy="95"
+            rx="20"
+            ry="55"
+            fill="url(#tubeGrad3)"
+            stroke="#2a3f5f"
+            stroke-width="2"
+          />
+
+          <!-- Tube segments -->
+          <rect
+            x="40"
+            y="85"
+            width="40"
+            height="4"
+            rx="2"
+            fill="#2a3f5f"
+            opacity="0.6"
+          />
+          <rect
+            x="40"
+            y="105"
+            width="40"
+            height="4"
+            rx="2"
+            fill="#2a3f5f"
+            opacity="0.6"
+          />
+          <rect
+            x="40"
+            y="125"
+            width="40"
+            height="4"
+            rx="2"
+            fill="#2a3f5f"
+            opacity="0.6"
+          />
+
+          <!-- Front lens housing -->
+          <ellipse cx="60" cy="40" rx="22" ry="10" fill="#4a5f7f" />
+          <ellipse cx="60" cy="38" rx="22" ry="10" fill="#5a6f8f" />
+          <ellipse cx="60" cy="38" rx="18" ry="8" fill="#1a2332" />
+
+          <!-- Main lens -->
+          <ellipse cx="60" cy="38" rx="16" ry="7" fill="url(#lensGrad3)" />
+          <ellipse
+            cx="60"
+            cy="36"
+            rx="12"
+            ry="5"
+            fill="#c4d7ff"
+            opacity="0.8"
+          />
+          <ellipse cx="56" cy="35" rx="4" ry="2" fill="white" opacity="0.6" />
+
+          <!-- Eyepiece -->
+          <rect
+            x="70"
+            y="120"
+            width="18"
+            height="12"
+            rx="2"
+            fill="#4a5f7f"
+            stroke="#3a4f6f"
+            stroke-width="1"
+          />
+          <rect x="88" y="123" width="8" height="6" rx="1" fill="#3a4f6f" />
+          <circle cx="79" cy="126" r="3" fill="#1a2332" />
+
+          <!-- Finder scope -->
+          <rect
+            x="42"
+            y="65"
+            width="8"
+            height="25"
+            rx="4"
+            fill="#3a4f6f"
+            stroke="#2a3f5f"
+            stroke-width="1"
+          />
+          <circle cx="46" cy="63" r="3" fill="#5a6f8f" />
+          <circle cx="46" cy="63" r="2" fill="#8ab4f8" />
+
+          <!-- Focusing knobs -->
+          <circle
+            cx="73"
+            cy="95"
+            r="4"
+            fill="#3a4f6f"
+            stroke="#2a3f5f"
+            stroke-width="1"
+          />
+          <circle
+            cx="73"
+            cy="110"
+            r="4"
+            fill="#3a4f6f"
+            stroke="#2a3f5f"
+            stroke-width="1"
+          />
+
+          <!-- Details and rivets -->
+          <circle cx="60" cy="70" r="2" fill="#8ab4f8" opacity="0.5" />
+          <circle cx="60" cy="100" r="2" fill="#8ab4f8" opacity="0.5" />
+          <circle cx="60" cy="130" r="2" fill="#8ab4f8" opacity="0.5" />
+        </svg>
+      </div>
+    </div>
+
+    <div class="ground"></div>
+
+    <script>
+      // Generate stars
+      const starsContainer = document.getElementById("stars");
+      for (let i = 0; i < 150; i++) {
+        const star = document.createElement("div");
+        star.className = "star";
+        star.style.width = Math.random() * 3 + "px";
+        star.style.height = star.style.width;
+        star.style.left = Math.random() * 100 + "%";
+        star.style.top = Math.random() * 80 + "%";
+        star.style.animationDelay = Math.random() * 3 + "s";
+        star.style.animationDuration = Math.random() * 2 + 2 + "s";
+        starsContainer.appendChild(star);
+      }
+    </script>
+  </body>
+</html>
